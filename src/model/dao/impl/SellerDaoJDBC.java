@@ -18,8 +18,9 @@ import model.entities.Seller;
 
 public class SellerDaoJDBC implements SellerDAO {
 
-	private Connection conn; //a conexão permanece aberta nessa classe e é fechada apenas na aplicaçao, pois podera ser
-	//usada em outras tarefas da classe
+	private Connection conn; // a conexão permanece aberta nessa classe e é fechada apenas na aplicaçao, pois
+								// podera ser
+	// usada em outras tarefas da classe
 
 	public SellerDaoJDBC(Connection conn) {
 		this.conn = conn;
@@ -27,50 +28,67 @@ public class SellerDaoJDBC implements SellerDAO {
 
 	@Override
 	public void insert(Seller obj) {
-		
-		PreparedStatement st =null;
-		
+
+		PreparedStatement st = null;
+
 		try {
-			st = conn.prepareStatement(
-					"INSERT INTO seller "
-					+ "(Name, Email, BirthDate, BaseSalary, DepartmentId) "
-					+ "VALUES "
-					+ "(?, ?, ?, ?, ?)",
-					Statement.RETURN_GENERATED_KEYS);
-			
+			st = conn.prepareStatement("INSERT INTO seller " + "(Name, Email, BirthDate, BaseSalary, DepartmentId) "
+					+ "VALUES " + "(?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+
 			st.setString(1, obj.getName());
 			st.setString(2, obj.getEmail());
 			st.setDate(3, new java.sql.Date(obj.getBirthDate().getTime()));
 			st.setDouble(4, obj.getBaseSalary());
 			st.setInt(5, obj.getDepartment().getId());
-			
+
 			int rowsAffected = st.executeUpdate();
-			
-			if(rowsAffected > 0) {//se maior que 0 significa que foram inseridos dados no banco
-				
+
+			if (rowsAffected > 0) {// se maior que 0 significa que foram inseridos dados no banco
+
 				ResultSet rs = st.getGeneratedKeys();
-				
-				if(rs.next()) {
+
+				if (rs.next()) {
 					int id = rs.getInt(1);
 					obj.setId(id);
 				}
-				
+
 				DB.closeResultSet(rs);
-			}else {
+			} else {
 				throw new DbException("Unexpected Error: no rows affected");
 			}
-		}catch(SQLException e) {
-			throw new DbException("Erro: "+e.getMessage());
-		}finally {
+		} catch (SQLException e) {
+			throw new DbException("Erro: " + e.getMessage());
+		} finally {
 			DB.closeStatement(st);
-			
+
 		}
 
 	}
 
 	@Override
 	public void update(Seller obj) {
-		// TODO Auto-generated method stub
+		PreparedStatement st = null;
+		try {
+			st = conn.prepareStatement(
+					"UPDATE seller "
+					+ "SET Name = ?, Email = ?, BirthDate = ?, BaseSalary = ?, DepartmentId = ? "
+					+ "WHERE Id = ?");
+
+			st.setString(1, obj.getName());
+			st.setString(2, obj.getEmail());
+			st.setDate(3, new java.sql.Date(obj.getBirthDate().getTime()));
+			st.setDouble(4, obj.getBaseSalary());
+			st.setInt(5, obj.getDepartment().getId());
+			st.setInt(6, obj.getId());
+
+			st.executeUpdate();
+		}
+		catch (SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+		}
 
 	}
 
@@ -86,38 +104,41 @@ public class SellerDaoJDBC implements SellerDAO {
 		PreparedStatement st = null;
 		ResultSet rs = null;
 		try {
-			st = conn.prepareStatement("select seller.*,department.Name as DepName "
-					+ "from seller inner join department "
-					+ "on seller.DepartmentId = department.Id "
-					+ "where seller.Id = ?");
-			st.setInt(1,id);
-			rs = st.executeQuery();// a query vai ser executada e o resultado da execução sera armazenado pelo objeto ResultSet
-			
-			//lembrando que o resulset mostra os dados em forma de tabela e que a primeira posiçao dele é a posiçao 0, que nao há informaçoes de fato
-			//entao testa-se a posiçao, se ele for igual a 0 quer dizer que nao há elementos resultantes da pesquisa da query
-			
-			if(rs.next()) {//o if é porque só haverá 1 resultado retornado nesse caso mas normalmente se usa while
-				
+			st = conn.prepareStatement(
+					"select seller.*,department.Name as DepName " + "from seller inner join department "
+							+ "on seller.DepartmentId = department.Id " + "where seller.Id = ?");
+			st.setInt(1, id);
+			rs = st.executeQuery();// a query vai ser executada e o resultado da execução sera armazenado pelo
+									// objeto ResultSet
+
+			// lembrando que o resulset mostra os dados em forma de tabela e que a primeira
+			// posiçao dele é a posiçao 0, que nao há informaçoes de fato
+			// entao testa-se a posiçao, se ele for igual a 0 quer dizer que nao há
+			// elementos resultantes da pesquisa da query
+
+			if (rs.next()) {// o if é porque só haverá 1 resultado retornado nesse caso mas normalmente se
+							// usa while
+
 				Department dep = instantiateDepartment(rs);
-				
-				Seller obj = instantiateSeller(rs,dep);
-				
+
+				Seller obj = instantiateSeller(rs, dep);
+
 				return obj;
 			}
-			
+
 			return null;
-			
-		}catch(SQLException e) {
-			throw new DbException("Erro: "+e.getMessage());
-		}finally {
+
+		} catch (SQLException e) {
+			throw new DbException("Erro: " + e.getMessage());
+		} finally {
 			DB.closeStatement(st);
 			DB.closeResultSet(rs);
 		}
-		
+
 	}
 
 	private Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException {
-		
+
 		Seller obj = new Seller();
 		obj.setId(rs.getInt("Id"));
 		obj.setName(rs.getString("Name"));
@@ -125,16 +146,16 @@ public class SellerDaoJDBC implements SellerDAO {
 		obj.setBaseSalary(rs.getDouble("BaseSalary"));
 		obj.setBirthDate(rs.getDate("BirthDate"));
 		obj.setDepartment(dep);
-		
+
 		return obj;
 	}
 
 	private Department instantiateDepartment(ResultSet rs) throws SQLException {
-		
+
 		Department dep = new Department();
 		dep.setId(rs.getInt("DepartmentId"));
 		dep.setName(rs.getString("DepName"));
-		
+
 		return dep;
 	}
 
@@ -143,11 +164,9 @@ public class SellerDaoJDBC implements SellerDAO {
 		PreparedStatement st = null;
 		ResultSet rs = null;
 		try {
-			st = conn.prepareStatement(
-					"SELECT seller.*,department.Name as DepName "
-					+ "FROM seller INNER JOIN department "
-					+ "ON seller.DepartmentId = department.Id "
-					
+			st = conn.prepareStatement("SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department " + "ON seller.DepartmentId = department.Id "
+
 					+ "ORDER BY Name");
 
 			rs = st.executeQuery();
@@ -159,7 +178,7 @@ public class SellerDaoJDBC implements SellerDAO {
 
 				Department dep = map.get(rs.getInt("DepartmentId"));
 
-				if (dep == null) {//esse if é para evitar a repetiçao de objetos Department
+				if (dep == null) {// esse if é para evitar a repetiçao de objetos Department
 					dep = instantiateDepartment(rs);
 					map.put(rs.getInt("DepartmentId"), dep);
 				}
@@ -168,27 +187,22 @@ public class SellerDaoJDBC implements SellerDAO {
 				list.add(obj);
 			}
 			return list;
-		}
-		catch (SQLException e) {
+		} catch (SQLException e) {
 			throw new DbException(e.getMessage());
-		}
-		finally {
+		} finally {
 			DB.closeStatement(st);
 			DB.closeResultSet(rs);
 		}
 	}
-	
+
 	@Override
 	public List<Seller> findByDepartment(Department department) {
 		PreparedStatement st = null;
 		ResultSet rs = null;
 		try {
 			st = conn.prepareStatement(
-					"SELECT seller.*,department.Name as DepName "
-					+ "FROM seller INNER JOIN department "
-					+ "ON seller.DepartmentId = department.Id "
-					+ "WHERE DepartmentId = ? "
-					+ "ORDER BY Name");
+					"SELECT seller.*,department.Name as DepName " + "FROM seller INNER JOIN department "
+							+ "ON seller.DepartmentId = department.Id " + "WHERE DepartmentId = ? " + "ORDER BY Name");
 
 			st.setInt(1, department.getId());
 
@@ -210,11 +224,9 @@ public class SellerDaoJDBC implements SellerDAO {
 				list.add(obj);
 			}
 			return list;
-		}
-		catch (SQLException e) {
+		} catch (SQLException e) {
 			throw new DbException(e.getMessage());
-		}
-		finally {
+		} finally {
 			DB.closeStatement(st);
 			DB.closeResultSet(rs);
 		}
